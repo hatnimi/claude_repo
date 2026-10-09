@@ -91,7 +91,8 @@ def save(message: str = "Colab에서 실행 결과 저장", workdir: Path = WORK
         print("❌ GitHub에서 최신 상태를 받지 못했습니다. GITHUB_TOKEN을 확인하세요.")
         return False
     git("reset", "-q", "--mixed", "FETCH_HEAD")        # 기록은 GitHub 최신으로, 내 파일은 그대로 둔다
-    git("add", NOTEBOOK, "outputs")
+    git("add", NOTEBOOK)
+    git("add", "--ignore-removal", "outputs")       # Colab에 없는 결과 파일을 GitHub에서 지우지 않는다
     if git("diff", "--cached", "--quiet", quiet=True) == 0:
         print("새로 바뀐 내용이 없습니다.")
     else:
