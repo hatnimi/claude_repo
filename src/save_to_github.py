@@ -50,7 +50,7 @@ def notebook_text(nb: dict) -> tuple[str, int]:
 
 
 def save(message: str = "Colab에서 실행 결과 저장", workdir: Path = WORKDIR, nb: dict | None = None,
-         token: str | None = None, remote: str | None = None) -> bool:
+         token: str | None = None, remote: str | None = None, _updated: bool = False) -> bool:
     if nb is None or token is None:
         from google.colab import _message, userdata
         nb = nb or _message.blocking_request("get_ipynb", timeout_sec=120)["ipynb"]
@@ -63,6 +63,19 @@ def save(message: str = "Colab에서 실행 결과 저장", workdir: Path = WORK
         if out and not quiet:
             print(out)
         return r.returncode
+
+    # 0) Colab에 남은 이 파일이 예전 버전이면, GitHub의 최신 저장 기능으로 바꿔서 다시 실행한다
+    if not _updated and git("fetch", "-q", remote, BRANCH, quiet=True) == 0:
+        latest = subprocess.run(["git", "-C", str(workdir), "show", "FETCH_HEAD:src/save_to_github.py"],
+                                capture_output=True, text=True).stdout
+        here = workdir / "src" / "save_to_github.py"
+        if latest and (not here.exists() or here.read_text(encoding="utf-8") != latest):
+            here.write_text(latest, encoding="utf-8")
+            import importlib
+            import sys
+            print("🔄 저장 기능을 최신 버전으로 바꿔서 저장합니다.")
+            module = importlib.reload(sys.modules[__name__])
+            return module.save(message, workdir, nb, token, remote, _updated=True)
 
     # 1) 이전 저장이 중간에 멈춘 흔적 정리
     #    rebase를 취소하면 그 사이에 생긴 결과 파일이 지워질 수 있어서, outputs/를 먼저 따로 복사해 둔다
