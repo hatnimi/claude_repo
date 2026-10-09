@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from analysis import plot_compare, trim  # noqa: E402
-from disambiguate import current_model, disambiguate, evaluate  # noqa: E402
+from disambiguate import current_model, disambiguate, disambiguate_many, evaluate  # noqa: E402
 
 OUT = ROOT / "outputs"
 SENTENCES = json.loads((ROOT / "data" / "sentences.json").read_text(encoding="utf-8"))
@@ -77,6 +77,7 @@ def step_commercial():
 
     d = OUT / "commercial"
     d.mkdir(parents=True, exist_ok=True)
+    disambiguate_many(DEMO)          # 시연 문장의 판별 결과를 한 번에 받아 둔다 (이미 받았으면 저장된 답 사용)
     for i, text in enumerate(DEMO):
         cands = disambiguate(text)
         r = synthesize_pair(text, cands)
@@ -92,6 +93,7 @@ def step_vits(weight: float):
 
     d = OUT / "vits"
     d.mkdir(parents=True, exist_ok=True)
+    disambiguate_many(DEMO)          # 시연 문장의 판별 결과를 한 번에 받아 둔다 (이미 받았으면 저장된 답 사용)
     tts = VowelLengthVITS()
     rows = []
     for i, text in enumerate(DEMO):
