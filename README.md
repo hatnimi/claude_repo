@@ -37,12 +37,12 @@
 | `data/lexicon.json` | 동음이의어 장단음 사전 (표준국어대사전 기준) |
 | `data/sentences.json` | 평가 문장 12개, 사람이 붙인 정답 의미 25개 |
 | `run_experiment.py` | 전체 실험 실행 |
-| `TTS_장단음_탐구.ipynb` | **Colab에서 단계별로 실행하는 노트북 (여기서 시작)** |
+| `tts_vowel_length.ipynb` | **Colab에서 단계별로 실행하는 노트북 (여기서 시작)** |
 | `tests/test_vits_hook.py` | 사전학습 가중치 없이 hook 동작만 검증하는 테스트 |
 | `docs/탐구노트.md` | 탐구 과정 기록과 면접 대비 정리 |
 
 ## 3. 실행 방법 (Google Colab 추천)
-1. `TTS_장단음_탐구.ipynb`를 Colab에서 연다.
+1. `tts_vowel_length.ipynb`를 Colab에서 연다.
 2. 왼쪽 🔑 **보안 비밀**에 `GEMINI_API_KEY`를 등록한다 ([Google AI Studio](https://aistudio.google.com/)에서 무료 발급).
    - 선택: `GOOGLE_TTS_API_KEY`(Google Cloud Text-to-Speech). 없으면 gTTS와 철자 변형 방식으로 진행한다.
 3. 위에서부터 셀을 차례로 실행한다.
