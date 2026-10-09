@@ -24,6 +24,8 @@ from disambiguate import current_model, disambiguate, disambiguate_many, evaluat
 
 OUT = ROOT / "outputs"
 SENTENCES = json.loads((ROOT / "data" / "sentences.json").read_text(encoding="utf-8"))
+# 단서가 약하거나 헷갈리게 만든 문장 (기본 문장에서 100%가 나와 난도를 높여 다시 시험)
+HARD_SENTENCES = json.loads((ROOT / "data" / "sentences_hard.json").read_text(encoding="utf-8"))
 # 시연용 문장: 같은 단어가 짧게/길게 한 번씩 나오는 문장
 DEMO = ["눈에 눈이 들어가서 눈물이 났다.",
         "그는 말을 타고 달리면서 계속 말을 걸었다.",
@@ -54,22 +56,23 @@ def error_hint(e: Exception) -> str:
 def step_disambig():
     report = ["# 동음이의어 장단음 판별 결과\n"]
     path = OUT / "disambiguation.md"
-    for method in ["baseline", "gemini"]:
-        if method == "gemini":
-            print(f"[gemini] 사용 모델: {current_model()}")
-        try:
-            r = evaluate(SENTENCES, method)
-        except Exception as e:   # 실패해도 baseline 결과와 실패 원인을 파일에 남긴다
-            err = f"{type(e).__name__}: {e}"
-            report += [f"## {method}", f"**❌ 실행 실패**\n\n```\n{err}\n```\n", f"👉 {error_hint(e)}", ""]
+    print(f"[gemini] 사용 모델: {current_model()}")
+    for set_name, sentences in [("기본 문장", SENTENCES), ("어려운 문장", HARD_SENTENCES)]:
+        report.append(f"# {set_name} ({len(sentences)}개)\n")
+        for method in ["baseline", "gemini"]:
+            try:
+                r = evaluate(sentences, method)
+            except Exception as e:   # 실패해도 그때까지의 결과와 실패 원인을 파일에 남긴다
+                err = f"{type(e).__name__}: {e}"
+                report += [f"## {method}", f"**❌ 실행 실패**\n\n```\n{err}\n```\n", f"👉 {error_hint(e)}", ""]
+                path.write_text("\n".join(report), encoding="utf-8")
+                print(f"[{set_name}·{method}] ❌ 실패: {err}\n👉 {error_hint(e)}")
+                sys.exit(1)
+            title = f"## {method} ({current_model()})" if method == "gemini" else f"## {method}"
+            report += [title, f"- 의미 정확도: {r['sense_acc']:.1%}",
+                       f"- 장단 정확도: {r['length_acc']:.1%}\n", md_table(r["rows"]), ""]
             path.write_text("\n".join(report), encoding="utf-8")
-            print(f"[{method}] ❌ 실패: {err}\n👉 {error_hint(e)}")
-            sys.exit(1)
-        title = f"## {method} ({current_model()})" if method == "gemini" else f"## {method}"
-        report += [title, f"- 의미 정확도: {r['sense_acc']:.1%}",
-                   f"- 장단 정확도: {r['length_acc']:.1%}\n", md_table(r["rows"]), ""]
-        path.write_text("\n".join(report), encoding="utf-8")
-        print(f"[{method}] 의미 {r['sense_acc']:.1%} / 장단 {r['length_acc']:.1%}")
+            print(f"[{set_name}·{method}] 의미 {r['sense_acc']:.1%} / 장단 {r['length_acc']:.1%}")
 
 
 def step_commercial():

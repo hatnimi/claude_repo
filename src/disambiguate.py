@@ -166,6 +166,9 @@ def evaluate(sentences: list[dict], method: str, llm=call_gemini) -> dict:
             sense_ok += s_ok
             length_ok += l_ok
             total += 1
-            rows.append({"문장": item["text"], "단어": c.form, "정답": gold, "예측": c.sense_id,
-                         "의미": "O" if s_ok else "X", "장단": "O" if l_ok else "X", "근거": c.reason})
+            row = {"문장": item["text"], "단어": c.form, "정답": gold, "예측": c.sense_id,
+                   "의미": "O" if s_ok else "X", "장단": "O" if l_ok else "X", "근거": c.reason}
+            if "note" in item:
+                row["함정"] = item["note"]
+            rows.append(row)
     return {"method": method, "sense_acc": sense_ok / total, "length_acc": length_ok / total, "rows": rows}
