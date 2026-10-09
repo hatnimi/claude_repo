@@ -15,7 +15,7 @@ from pathlib import Path
 from morph import Candidate, find_candidates
 
 CACHE_PATH = Path(__file__).resolve().parent.parent / "outputs" / "gemini_cache.json"
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 
 PROMPT_TEMPLATE = """너는 한국어 표준 발음 전문가야.
 아래 문장에서 【번호:단어】로 표시된 단어가 각각 어떤 의미로 쓰였는지 문맥을 보고 골라.

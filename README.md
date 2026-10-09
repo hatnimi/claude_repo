@@ -54,7 +54,7 @@ export GEMINI_API_KEY=...
 python run_experiment.py            # 결과는 outputs/ 에 저장
 python tests/test_vits_hook.py      # 인터넷 없이 hook 동작 확인
 ```
-Gemini 모델 이름은 환경변수 `GEMINI_MODEL`로 바꿀 수 있다(기본값 `gemini-2.5-flash`).
+Gemini 모델 이름은 환경변수 `GEMINI_MODEL`로 바꿀 수 있다(기본값 `gemini-3.8-flash`).
 
 ## 4. 두 방법 비교
 | | 방법 1: 상용 TTS + 입력 변경 | 방법 2: VITS 텐서 개입 |
