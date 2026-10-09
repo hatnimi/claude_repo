@@ -64,13 +64,15 @@ def synth_google_cloud(ssml: str, voice: str = "ko-KR-Standard-A", sr: int = 220
 
     resp = requests.post(
         "https://texttospeech.googleapis.com/v1/text:synthesize",
-        params={"key": os.environ["GOOGLE_TTS_API_KEY"]},
+        headers={"X-Goog-Api-Key": os.environ["GOOGLE_TTS_API_KEY"]},   # 주소에 넣으면 오류 메시지에 키가 찍힌다
         json={"input": {"ssml": ssml},
               "voice": {"languageCode": "ko-KR", "name": voice},
               "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": sr}},
         timeout=30,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        reason = resp.json().get("error", {}).get("message", resp.text[:200]) if resp.content else ""
+        raise RuntimeError(f"Google Cloud TTS {resp.status_code}: {reason}")
     wav, sr = sf.read(io.BytesIO(base64.b64decode(resp.json()["audioContent"])), dtype="float32")
     return wav, sr
 
@@ -90,13 +92,16 @@ def synth_gtts(text: str) -> tuple[np.ndarray, int]:
 def synthesize_pair(text: str, cands: list[Candidate]) -> dict:
     """원래 문장과 장단음을 반영한 문장을 같은 엔진으로 합성해서 돌려준다."""
     if os.environ.get("GOOGLE_TTS_API_KEY"):
-        base = synth_google_cloud(f"<speak>{escape(text)}</speak>")
-        mod_input = to_ssml(text, cands)
-        mod = synth_google_cloud(mod_input)
-        engine = "Google Cloud TTS + SSML"
-    else:
-        base = synth_gtts(text)
-        mod_input = to_respelled(text, cands)
-        mod = synth_gtts(mod_input)
-        engine = "gTTS + 철자 변형"
-    return {"engine": engine, "input": mod_input, "base": base, "mod": mod}
+        try:
+            base = synth_google_cloud(f"<speak>{escape(text)}</speak>")
+            mod_input = to_ssml(text, cands)
+            mod = synth_google_cloud(mod_input)
+            return {"engine": "Google Cloud TTS + SSML", "input": mod_input, "base": base, "mod": mod}
+        except RuntimeError as e:
+            # 403 = 이 키의 프로젝트에서 Cloud Text-to-Speech API가 켜져 있지 않거나, 키가 다른 API 전용으로 제한됨
+            print(f"  ⚠️ {e}\n  → Google Cloud TTS를 쓸 수 없어 gTTS + 철자 변형으로 대신합니다.")
+            del os.environ["GOOGLE_TTS_API_KEY"]   # 다음 문장부터는 바로 gTTS 사용
+    base = synth_gtts(text)
+    mod_input = to_respelled(text, cands)
+    mod = synth_gtts(mod_input)
+    return {"engine": "gTTS + 철자 변형", "input": mod_input, "base": base, "mod": mod}
