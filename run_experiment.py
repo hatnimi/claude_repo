@@ -38,14 +38,33 @@ def md_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def error_hint(e: Exception) -> str:
+    msg = str(e)
+    if "404" in msg or "NOT_FOUND" in msg:
+        return "모델 이름이 더 이상 제공되지 않습니다. 오류 메시지가 권하는 모델 이름을 os.environ['GEMINI_MODEL']에 넣고 다시 실행하세요."
+    if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+        return "무료 사용량을 초과했습니다. 1~2분 뒤 다시 실행하세요. 이미 받은 답은 저장돼 있어 이어서 진행됩니다."
+    if "API key" in msg or "PERMISSION_DENIED" in msg or "GEMINI_API_KEY" in msg:
+        return "API 키 문제입니다. 🔑 보안 비밀 이름이 GEMINI_API_KEY인지, 값이 정확한지 확인하세요."
+    return "위 오류 메시지를 확인하세요."
+
+
 def step_disambig():
     report = ["# 동음이의어 장단음 판별 결과\n"]
+    path = OUT / "disambiguation.md"
     for method in ["baseline", "gemini"]:
-        r = evaluate(SENTENCES, method)
+        try:
+            r = evaluate(SENTENCES, method)
+        except Exception as e:   # 실패해도 baseline 결과와 실패 원인을 파일에 남긴다
+            err = f"{type(e).__name__}: {e}"
+            report += [f"## {method}", f"**❌ 실행 실패**\n\n```\n{err}\n```\n", f"👉 {error_hint(e)}", ""]
+            path.write_text("\n".join(report), encoding="utf-8")
+            print(f"[{method}] ❌ 실패: {err}\n👉 {error_hint(e)}")
+            sys.exit(1)
         report += [f"## {method}", f"- 의미 정확도: {r['sense_acc']:.1%}",
                    f"- 장단 정확도: {r['length_acc']:.1%}\n", md_table(r["rows"]), ""]
+        path.write_text("\n".join(report), encoding="utf-8")
         print(f"[{method}] 의미 {r['sense_acc']:.1%} / 장단 {r['length_acc']:.1%}")
-    (OUT / "disambiguation.md").write_text("\n".join(report), encoding="utf-8")
 
 
 def step_commercial():

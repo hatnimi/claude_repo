@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 
 from morph import Candidate, find_candidates
@@ -69,17 +70,24 @@ def _save_cache(cache: dict) -> None:
 
 def call_gemini(prompt: str, model: str = DEFAULT_MODEL) -> str:
     from google import genai
-    from google.genai import types
+    from google.genai import errors, types
 
     if not os.environ.get("GEMINI_API_KEY"):
         raise RuntimeError("GEMINI_API_KEY 환경변수가 없습니다. Google AI Studio에서 키를 발급받아 등록하세요.")
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    resp = client.models.generate_content(
-        model=model,
-        contents=prompt,
-        config=types.GenerateContentConfig(temperature=0, response_mime_type="application/json"),
-    )
-    return resp.text
+    for wait in [30, 60, None]:            # 무료 등급은 분당 호출 수 제한(429)이 있어 기다렸다 다시 시도
+        try:
+            resp = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=0, response_mime_type="application/json"),
+            )
+            return resp.text
+        except errors.APIError as e:
+            if e.code != 429 or wait is None:
+                raise
+            print(f"  (호출 한도 초과 → {wait}초 기다렸다 다시 시도)")
+            time.sleep(wait)
 
 
 def disambiguate(text: str, method: str = "gemini", llm=call_gemini) -> list[Candidate]:
