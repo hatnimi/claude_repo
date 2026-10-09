@@ -17,6 +17,7 @@ import json
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 REPO = "hatnimi/claude_repo"
@@ -64,10 +65,16 @@ def save(message: str = "Colab에서 실행 결과 저장", workdir: Path = WORK
         return r.returncode
 
     # 1) 이전 저장이 중간에 멈춘 흔적 정리
+    #    rebase를 취소하면 그 사이에 생긴 결과 파일이 지워질 수 있어서, outputs/를 먼저 따로 복사해 둔다
+    backup = Path(tempfile.mkdtemp()) / "outputs"
+    if (workdir / "outputs").exists():
+        shutil.copytree(workdir / "outputs", backup)
     git("rebase", "--abort", quiet=True)
     git("merge", "--abort", quiet=True)
     for d in ("rebase-merge", "rebase-apply"):
         shutil.rmtree(workdir / ".git" / d, ignore_errors=True)
+    if backup.exists():
+        shutil.copytree(backup, workdir / "outputs", dirs_exist_ok=True)
 
     # 2) 화면의 노트북 → 파일 (예전 저장 셀은 새 셀로 교체, API 키는 가림)
     if _upgrade_save_cell(nb):
