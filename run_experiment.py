@@ -44,6 +44,8 @@ def error_hint(e: Exception) -> str:
         return "모델 이름이 더 이상 제공되지 않습니다. 오류 메시지가 권하는 모델 이름을 os.environ['GEMINI_MODEL']에 넣고 다시 실행하세요."
     if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
         return "무료 사용량을 초과했습니다. 1~2분 뒤 다시 실행하세요. 이미 받은 답은 저장돼 있어 이어서 진행됩니다."
+    if any(k in msg for k in ("503", "UNAVAILABLE", "500", "INTERNAL", "504")):
+        return "Gemini 서버가 일시적으로 붐빕니다. 몇 분 뒤 다시 실행하세요. 이미 받은 답은 저장돼 있어 이어서 진행됩니다."
     if "API key" in msg or "PERMISSION_DENIED" in msg or "GEMINI_API_KEY" in msg:
         return "API 키 문제입니다. 🔑 보안 비밀 이름이 GEMINI_API_KEY인지, 값이 정확한지 확인하세요."
     return "위 오류 메시지를 확인하세요."

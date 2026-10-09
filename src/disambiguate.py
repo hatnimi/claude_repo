@@ -75,7 +75,9 @@ def call_gemini(prompt: str, model: str = DEFAULT_MODEL) -> str:
     if not os.environ.get("GEMINI_API_KEY"):
         raise RuntimeError("GEMINI_API_KEY 환경변수가 없습니다. Google AI Studio에서 키를 발급받아 등록하세요.")
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    for wait in [30, 60, None]:            # 무료 등급은 분당 호출 수 제한(429)이 있어 기다렸다 다시 시도
+    # 429: 무료 등급 분당 호출 한도 초과 / 500·503·504: 서버 과부하 → 둘 다 잠시 뒤 다시 시도하면 된다
+    retry_reason = {429: "호출 한도 초과", 500: "서버 오류", 503: "서버 과부하", 504: "서버 응답 지연"}
+    for wait in [15, 30, 60, 120, None]:
         try:
             resp = client.models.generate_content(
                 model=model,
@@ -84,9 +86,9 @@ def call_gemini(prompt: str, model: str = DEFAULT_MODEL) -> str:
             )
             return resp.text
         except errors.APIError as e:
-            if e.code != 429 or wait is None:
+            if e.code not in retry_reason or wait is None:
                 raise
-            print(f"  (호출 한도 초과 → {wait}초 기다렸다 다시 시도)")
+            print(f"  ({e.code} {retry_reason[e.code]} → {wait}초 기다렸다 다시 시도)")
             time.sleep(wait)
 
 
