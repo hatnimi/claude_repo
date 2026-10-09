@@ -71,9 +71,10 @@ def call_gemini(prompt: str, model: str = DEFAULT_MODEL) -> str:
     from google import genai
     from google.genai import types
 
-    if not os.environ.get("GEMINI_API_KEY"):
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
         raise RuntimeError("GEMINI_API_KEY 환경변수가 없습니다. Google AI Studio에서 키를 발급받아 등록하세요.")
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    client = genai.Client(api_key=api_key)
     resp = client.models.generate_content(
         model=model,
         contents=prompt,
