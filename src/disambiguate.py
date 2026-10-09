@@ -16,7 +16,12 @@ from pathlib import Path
 from morph import Candidate, find_candidates
 
 CACHE_PATH = Path(__file__).resolve().parent.parent / "outputs" / "gemini_cache.json"
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+DEFAULT_MODEL = "gemini-3.8-flash"
+
+
+def current_model() -> str:
+    """노트북에서 os.environ["GEMINI_MODEL"]을 바꾸면 바로 반영되도록 호출할 때마다 읽는다."""
+    return os.environ.get("GEMINI_MODEL") or DEFAULT_MODEL
 
 PROMPT_TEMPLATE = """너는 한국어 표준 발음 전문가야.
 아래 문장에서 【번호:단어】로 표시된 단어가 각각 어떤 의미로 쓰였는지 문맥을 보고 골라.
@@ -68,13 +73,14 @@ def _save_cache(cache: dict) -> None:
     CACHE_PATH.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def call_gemini(prompt: str, model: str = DEFAULT_MODEL) -> str:
+def call_gemini(prompt: str, model: str | None = None) -> str:
     from google import genai
     from google.genai import errors, types
 
     if not os.environ.get("GEMINI_API_KEY"):
         raise RuntimeError("GEMINI_API_KEY 환경변수가 없습니다. Google AI Studio에서 키를 발급받아 등록하세요.")
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    model = model or current_model()
     # 429: 무료 등급 분당 호출 한도 초과 / 500·503·504: 서버 과부하 → 둘 다 잠시 뒤 다시 시도하면 된다
     retry_reason = {429: "호출 한도 초과", 500: "서버 오류", 503: "서버 과부하", 504: "서버 응답 지연"}
     for wait in [15, 30, 60, 120, None]:
@@ -106,10 +112,11 @@ def disambiguate(text: str, method: str = "gemini", llm=call_gemini) -> list[Can
     if ambiguous:
         prompt = build_prompt(text, ambiguous)
         cache = _load_cache()
-        if prompt not in cache:
-            cache[prompt] = llm(prompt)
+        key = f"[{current_model()}]\n{prompt}"       # 모델이 바뀌면 다시 물어본다 (모델끼리 결과가 섞이지 않게)
+        if key not in cache:
+            cache[key] = llm(prompt)
             _save_cache(cache)
-        parse_response(cache[prompt], ambiguous)
+        parse_response(cache[key], ambiguous)
     return cands
 
 

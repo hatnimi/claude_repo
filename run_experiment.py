@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from analysis import plot_compare, trim  # noqa: E402
-from disambiguate import disambiguate, evaluate  # noqa: E402
+from disambiguate import current_model, disambiguate, evaluate  # noqa: E402
 
 OUT = ROOT / "outputs"
 SENTENCES = json.loads((ROOT / "data" / "sentences.json").read_text(encoding="utf-8"))
@@ -55,6 +55,8 @@ def step_disambig():
     report = ["# 동음이의어 장단음 판별 결과\n"]
     path = OUT / "disambiguation.md"
     for method in ["baseline", "gemini"]:
+        if method == "gemini":
+            print(f"[gemini] 사용 모델: {current_model()}")
         try:
             r = evaluate(SENTENCES, method)
         except Exception as e:   # 실패해도 baseline 결과와 실패 원인을 파일에 남긴다
@@ -63,7 +65,8 @@ def step_disambig():
             path.write_text("\n".join(report), encoding="utf-8")
             print(f"[{method}] ❌ 실패: {err}\n👉 {error_hint(e)}")
             sys.exit(1)
-        report += [f"## {method}", f"- 의미 정확도: {r['sense_acc']:.1%}",
+        title = f"## {method} ({current_model()})" if method == "gemini" else f"## {method}"
+        report += [title, f"- 의미 정확도: {r['sense_acc']:.1%}",
                    f"- 장단 정확도: {r['length_acc']:.1%}\n", md_table(r["rows"]), ""]
         path.write_text("\n".join(report), encoding="utf-8")
         print(f"[{method}] 의미 {r['sense_acc']:.1%} / 장단 {r['length_acc']:.1%}")
